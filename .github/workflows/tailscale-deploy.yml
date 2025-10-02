@@ -41,24 +41,22 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy and Restart Application
+      - name: Diagnose SSH Connection and Environment
         run: |
-          JAR_FILE=$(find demo/target -name "*.jar" | head -n 1)
-          if [ -z "$JAR_FILE" ]; then
-            echo "Error: JAR file not found in demo/target."
-            exit 1
-          fi
-
-          # 1. Securely copy the new JAR to the server
-          scp -o StrictHostKeyChecking=accept-new $JAR_FILE root@java-web2:/opt/apps/app.jar
-
-          # 2. SSH in and restart ONLY the Java application
-          ssh root@java-web2 '
-            echo "--- Stopping the old Java process ---"
-            pkill -f "java -jar /opt/apps/app.jar" || true
+          # This is a temporary script for debugging
+          ssh -o StrictHostKeyChecking=accept-new root@java-web2 '
+            echo "✅ --- Connection successful ---"
             
-            echo "--- Starting the new Java process ---"
-            nohup java -jar /opt/apps/app.jar > /tmp/app.log 2>&1 &
+            echo "WHOAMI: $(whoami)"
+            echo "HOSTNAME: $(hostname)"
             
-            echo "--- Deployment complete ---"
+            echo "--- Checking for required commands ---"
+            echo "PATH: $PATH"
+            echo "pkill location: $(command -v pkill)"
+            echo "java location: $(command -v java)"
+            
+            echo "--- Checking permissions for /opt/apps ---"
+            ls -ld /opt/apps
+            
+            echo "✅ --- Diagnostic script finished successfully ---"
           '
