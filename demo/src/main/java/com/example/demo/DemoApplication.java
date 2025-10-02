@@ -18,6 +18,6 @@ public class DemoApplication {
 class TestController {
     @GetMapping("/ping")
     public String ping() {
-        return "Pong!!";
+        return "Pong!";
     }
 }
