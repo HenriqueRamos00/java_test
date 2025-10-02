@@ -52,20 +52,20 @@ jobs:
           # 1. Securely copy the new JAR to the server
           scp -o StrictHostKeyChecking=accept-new $JAR_FILE root@java-web2:/opt/apps/app.jar
 
-          # 2. SSH in to stop/start the application using its PID file
+          # 2. SSH in to stop the old application
           ssh root@java-web2 '
-            # Check if the PID file exists
-            if [ -f /opt/apps/app.pid ]; then
-              echo "--- Stopping the old Java process using PID file ---"
-              # Read the PID and stop the process
-              kill $(cat /opt/apps/app.pid)
-            else
-              echo "--- PID file not found, no old process to stop ---"
-            fi
-            
-            echo "--- Starting the new Java process ---"
-            # The new app will create /opt/apps/app.pid when it starts
-            nohup java -jar /opt/apps/app.jar > /tmp/app.log 2>&1 &
-            
-            echo "--- Deployment complete ---"
+            echo "--- Stopping the old Java process ---"
+            pkill -f "java -jar /opt/apps/app.jar" || true
           '
+          
+          # 3. SSH in again using -f to start the new application in the background
+          echo "--- Starting the new Java process ---"
+          ssh -f root@java-web2 '
+            nohup java -jar /opt/apps/app.jar > /tmp/app.log 2>&1 &
+          '
+          
+          echo "--- Deployment complete ---"
+
+          # --- FIX: Cleanly disconnect from the Tailscale network ---
+          echo "--- Logging out of Tailscale ---"
+          tailscale logout
