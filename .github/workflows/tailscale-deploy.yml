@@ -21,7 +21,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: maven
 
       - name: Build with Maven Wrapper
         working-directory: demo # folder
@@ -65,7 +64,3 @@ jobs:
           '
           
           echo "--- Deployment complete ---"
-
-          # --- FIX: Cleanly disconnect from the Tailscale network ---
-          echo "--- Logging out of Tailscale ---"
-          tailscale logout
