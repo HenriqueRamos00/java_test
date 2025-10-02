@@ -1,0 +1,1 @@
+[![Build and Deploy to Tailscale Server](https://github.com/HenriqueRamos00/java_test/actions/workflows/tailscale-deploy.yml/badge.svg)](https://github.com/HenriqueRamos00/java_test/actions/workflows/tailscale-deploy.yml)
