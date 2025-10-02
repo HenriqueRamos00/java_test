@@ -24,7 +24,7 @@ jobs:
           cache: maven
 
       - name: Build with Maven Wrapper
-        working-directory: demo # Run commands inside the 'demo' folder
+        working-directory: demo
         run: |
           chmod +x ./mvnw
           ./mvnw -B package --file pom.xml -DskipTests
