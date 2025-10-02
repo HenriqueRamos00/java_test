@@ -48,27 +48,26 @@ jobs:
             exit 1
           fi
 
-          # Test SSH connectivity first
-          echo "--- Testing SSH connection ---"
-          ssh -o StrictHostKeyChecking=accept-new \
-              -o ConnectTimeout=10 \
-              root@java-web2 'echo "SSH connection successful"'
+          # Add host to known_hosts
+          ssh-keyscan java-web2 >> ~/.ssh/known_hosts 2>/dev/null || true
 
           # Copy JAR file
           echo "--- Copying JAR file ---"
-          scp -o StrictHostKeyChecking=accept-new \
-              -o ConnectTimeout=10 \
-              $JAR_FILE root@java-web2:/opt/apps/app.jar
+          scp $JAR_FILE root@java-web2:/opt/apps/app.jar
 
-          # Stop old process
-          echo "--- Stopping old process ---"
-          ssh root@java-web2 'pkill -f "java -jar /opt/apps/app.jar" || echo "No existing process found"'
-
-          # Wait a moment for process to stop
-          sleep 2
-
-          # Start new process
-          echo "--- Starting new process ---"
-          ssh root@java-web2 'nohup java -jar /opt/apps/app.jar > /tmp/app.log 2>&1 & echo "Started with PID: $!"'
-
-          echo "--- Deployment complete ---"
+          # Stop and start in one SSH session
+          echo "--- Deploying application ---"
+          ssh root@java-web2 'bash -s' << 'EOF'
+            set -e
+            echo "Stopping old process..."
+            pkill -f "java -jar /opt/apps/app.jar" || echo "No existing process found"
+            
+            echo "Waiting for process to stop..."
+            sleep 2
+            
+            echo "Starting new process..."
+            nohup java -jar /opt/apps/app.jar > /tmp/app.log 2>&1 &
+            echo "Started with PID: $!"
+            
+            echo "Deployment complete!"
+          EOF
