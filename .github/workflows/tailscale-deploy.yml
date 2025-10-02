@@ -71,3 +71,9 @@ jobs:
             
             echo "Deployment complete!"
           EOF
+          
+      - name: Disconnect from Tailscale
+        if: always()
+        run: |
+          echo "--- Disconnecting from Tailscale ---"
+          sudo tailscale down || true
