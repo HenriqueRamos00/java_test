@@ -41,22 +41,27 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Diagnose SSH Connection and Environment
+      - name: Deploy and Run Application
         run: |
-          # This is a temporary script for debugging
-          ssh -o StrictHostKeyChecking=accept-new root@java-web2 '
-            echo "✅ --- Connection successful ---"
-            
-            echo "WHOAMI: $(whoami)"
-            echo "HOSTNAME: $(hostname)"
-            
-            echo "--- Checking for required commands ---"
-            echo "PATH: $PATH"
-            echo "pkill location: $(command -v pkill)"
-            echo "java location: $(command -v java)"
-            
-            echo "--- Checking permissions for /opt/apps ---"
-            ls -ld /opt/apps
-            
-            echo "✅ --- Diagnostic script finished successfully ---"
+          JAR_FILE=$(find demo/target -name "*.jar" | head -n 1)
+          if [ -z "$JAR_FILE" ]; then
+            echo "Error: JAR file not found in demo/target."
+            exit 1
+          fi
+
+          # 1. Securely copy the new JAR to the server
+          scp -o StrictHostKeyChecking=accept-new $JAR_FILE root@java-web2:/opt/apps/app.jar
+
+          # 2. SSH in to stop the old application
+          ssh root@java-web2 '
+            echo "--- Stopping the old Java process ---"
+            pkill -f "java -jar /opt/apps/app.jar" || true
           '
+          
+          # 3. SSH in again using -f to start the new application in the background
+          echo "--- Starting the new Java process ---"
+          ssh -f root@java-web2 '
+            nohup java -jar /opt/apps/app.jar > /tmp/app.log 2>&1 &
+          '
+          
+          echo "--- Deployment complete ---"
