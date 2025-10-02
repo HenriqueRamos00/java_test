@@ -59,7 +59,7 @@ jobs:
             # Stop the old Java app if it is running
             pkill -f "java -jar /opt/apps/app.jar" || true
             # Stop the old tailscale serve if it is running
-            tailscale server 8080 off
+            pkill -f "tailscale serve" || true
             
             echo "--- Starting new processes in the background ---"
             # Start the new Java app in the background, logging to /tmp/app.log
