@@ -1,4 +1,4 @@
-name: Deploy with Tailscale OAuth
+name: Build and Deploy to Tailscale Server
 
 on:
   push:
@@ -6,9 +6,8 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    # Required for the Tailscale OIDC authentication flow
     permissions:
       id-token: write
       contents: read
@@ -17,21 +16,54 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build with Maven
+        working-directory: demo
+        run: ./mvnw package -DskipTests
+
       - name: Connect to Tailscale
         uses: tailscale/github-action@v2
         with:
           oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
-          # The tag is now applied by the OAuth client, not here
-          #
-          tags: tag:ci-runner
+          tags: tag:ci-runner 
 
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy to server via Tailscale
+      - name: Deploy and Run Application
         run: |
-          # The rest of your script remains the same
-          ssh -o StrictHostKeyChecking=accept-new root@java-web2 "echo 'Deployment successful via Tailscale!'"
+          # 1. Find the JAR file name
+          JAR_FILE=$(find demo/target -name "*.jar" | head -n 1)
+          if [ -z "$JAR_FILE" ]; then
+            echo "Error: JAR file not found in demo/target."
+            exit 1
+          fi
+
+          # 2. Securely copy the JAR to the server
+          scp -o StrictHostKeyChecking=accept-new $JAR_FILE root@java-web2:/opt/apps/app.jar
+
+          # 3. SSH into the server and run the new script
+          ssh root@java-web2 '
+            echo "--- Stopping old processes ---"
+            # Stop the old Java app if it is running
+            pkill -f "java -jar /opt/apps/app.jar" || true
+            # Stop the old tailscale serve if it is running
+            pkill -f "tailscale serve" || true
+            
+            echo "--- Starting new processes in the background ---"
+            # Start the new Java app in the background, logging to /tmp/app.log
+            nohup java -jar /opt/apps/app.jar > /tmp/app.log 2>&1 &
+
+            # Start tailscale serve in the background
+            tailscale serve --bg http://localhost:8080
+            
+            echo "--- Deployment complete ---"
+          '
